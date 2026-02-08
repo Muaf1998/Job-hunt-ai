@@ -5,6 +5,8 @@ import nodemailer from 'nodemailer';
 import path from 'path';
 import fs from 'fs';
 
+// Initialize OpenAI client
+// Note: In Vercel, if API Key is missing, this might not throw immediately but will fail on first call.
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
@@ -54,23 +56,40 @@ async function sendResumeEmail(toEmail: string) {
 
 export async function POST(request: Request) {
     try {
-        const { message, threadId } = await request.json();
-
-        if (!ASSISTANT_ID) {
-            return NextResponse.json({ error: 'Assistant ID not configured' }, { status: 500 });
+        // 1. Validate Environment Variables
+        if (!process.env.OPENAI_API_KEY) {
+            console.error("❌ Missing OPENAI_API_KEY");
+            return NextResponse.json({ error: 'Server Misconfiguration: Missing API Key' }, { status: 500 });
+        }
+        if (!process.env.OPENAI_ASSISTANT_ID) {
+            console.error("❌ Missing OPENAI_ASSISTANT_ID");
+            return NextResponse.json({ error: 'Server Misconfiguration: Missing Assistant ID' }, { status: 500 });
         }
 
+        const { message, threadId } = await request.json();
         let threadIdToUse = threadId;
 
+        // 2. Setup Thread
         if (!threadIdToUse) {
-            const thread = await openai.beta.threads.create();
-            threadIdToUse = thread.id;
+            try {
+                const thread = await openai.beta.threads.create();
+                threadIdToUse = thread.id;
+            } catch (e: any) {
+                console.error("❌ Failed to create thread:", e);
+                return NextResponse.json({ error: `Failed to create thread: ${e.message}` }, { status: 500 });
+            }
         }
 
-        await openai.beta.threads.messages.create(threadIdToUse, {
-            role: "user",
-            content: message,
-        });
+        // 3. Add Message
+        try {
+            await openai.beta.threads.messages.create(threadIdToUse, {
+                role: "user",
+                content: message,
+            });
+        } catch (e: any) {
+            console.error("❌ Failed to add message:", e);
+            return NextResponse.json({ error: `Failed to add message: ${e.message}` }, { status: 500 });
+        }
 
         // Current run state variables
         let currentRunId: string | null = null;
@@ -85,45 +104,6 @@ export async function POST(request: Request) {
                 // Send thread ID immediately
                 sendEvent('threadId', { threadId: threadIdToUse });
 
-                const eventHandler: any = {
-                    onTextDelta: (delta: any, snapshot: any) => {
-                        if (delta.value) {
-                            sendEvent('textDelta', { text: delta.value });
-                        }
-                    },
-                    onRunStepCreated: (step: any) => {
-                        // console.log(`Step created: ${step.id}`);
-                    },
-                    onRunStepCompleted: (step: any) => {
-                        // console.log(`Step completed: ${step.id}`);
-                    },
-                    onToolCallCreated: (toolCall: any) => {
-                        sendEvent('toolCall', { type: toolCall.type, name: toolCall.function?.name });
-                    },
-                    onToolCallDelta: (delta: any, snapshot: any) => {
-                        // Could stream tool args if needed
-                    },
-                    onEvent: (event: any) => {
-                        if (event.event === 'thread.run.created') {
-                            currentRunId = event.data.id;
-                        }
-                        if (event.event === 'thread.run.requires_action') {
-                            requiresAction = true;
-                            handleRequiresAction(event.data, controller, threadIdToUse!, sendEvent);
-                        }
-                        if (event.event === 'thread.run.completed') {
-                            if (!requiresAction) { // Only close if we didn't divert to action handling
-                                controller.close();
-                            }
-                        }
-                        if (event.event === 'thread.run.failed') {
-                            sendEvent('error', { message: "Run failed" });
-                            controller.close();
-                        }
-                    }
-                };
-
-                // Helper to handle actions (tools)
                 async function handleRequiresAction(runData: any, controller: ReadableStreamDefaultController, threadId: string, sendEvent: Function) {
                     try {
                         const toolCalls = runData.required_action?.submit_tool_outputs.tool_calls;
@@ -161,7 +141,6 @@ export async function POST(request: Request) {
                             }
                         }
 
-                        // Submit outputs and continue streaming the follow-up response
                         if (toolOutputs.length > 0) {
                             const stream = openai.beta.threads.runs.submitToolOutputsStream(
                                 threadId,
@@ -194,31 +173,36 @@ export async function POST(request: Request) {
                     }
                 }
 
-                // Start the initial stream
-                const runStream = openai.beta.threads.runs.stream(threadIdToUse, {
-                    assistant_id: ASSISTANT_ID!,
-                });
+                try {
+                    const runStream = openai.beta.threads.runs.stream(threadIdToUse, {
+                        assistant_id: ASSISTANT_ID!,
+                    });
 
-                for await (const event of runStream) {
-                    // Manual dispatch to our event handler logic
-                    // The SDK's 'stream' object is an async iterable of AssistantStreamEvent
-                    if (event.event === 'thread.message.delta') {
-                        if (event.data.delta.content?.[0]?.type === 'text') {
-                            sendEvent('textDelta', { text: event.data.delta.content[0].text?.value });
+                    for await (const event of runStream) {
+                        if (event.event === 'thread.message.delta') {
+                            if (event.data.delta.content?.[0]?.type === 'text') {
+                                sendEvent('textDelta', { text: event.data.delta.content[0].text?.value });
+                            }
+                        }
+                        if (event.event === 'thread.run.created') currentRunId = event.data.id;
+                        if (event.event === 'thread.run.requires_action') {
+                            requiresAction = true;
+                            await handleRequiresAction(event.data, controller, threadIdToUse!, sendEvent);
+                        }
+                        if (event.event === 'thread.run.completed') {
+                            if (!requiresAction) controller.close();
+                        }
+                        if (event.event === 'thread.run.failed') {
+                            // Enhanced error details
+                            console.error("❌ Run failed event received:", JSON.stringify(event.data));
+                            sendEvent('error', { message: "AI Run Failed. Check server logs." });
+                            controller.close();
                         }
                     }
-                    if (event.event === 'thread.run.created') currentRunId = event.data.id;
-                    if (event.event === 'thread.run.requires_action') {
-                        requiresAction = true;
-                        await handleRequiresAction(event.data, controller, threadIdToUse!, sendEvent);
-                    }
-                    if (event.event === 'thread.run.completed') {
-                        if (!requiresAction) controller.close();
-                    }
-                    if (event.event === 'thread.run.failed') {
-                        sendEvent('error', { message: "Run failed" });
-                        controller.close();
-                    }
+                } catch (e: any) {
+                    console.error("❌ Error during stream loop:", e);
+                    sendEvent('error', { message: `Stream connection error: ${e.message}` });
+                    controller.close();
                 }
             }
         });
@@ -231,10 +215,10 @@ export async function POST(request: Request) {
             },
         });
 
-    } catch (error) {
-        console.error('Error in chat route:', error);
+    } catch (error: any) {
+        console.error('❌ Critical Error in chat route:', error);
         return NextResponse.json(
-            { error: 'Internal Server Error' },
+            { error: `Internal Server Error: ${error.message}` },
             { status: 500 }
         );
     }
