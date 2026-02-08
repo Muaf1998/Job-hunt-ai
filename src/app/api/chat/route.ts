@@ -5,6 +5,10 @@ import nodemailer from 'nodemailer';
 import path from 'path';
 import fs from 'fs';
 
+// Vercel Route Config
+export const maxDuration = 60; // 5 minutes (max for hobby is 10s-60s depending on plan)
+export const dynamic = 'force-dynamic';
+
 // Initialize OpenAI client
 // Note: In Vercel, if API Key is missing, this might not throw immediately but will fail on first call.
 const openai = new OpenAI({
