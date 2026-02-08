@@ -83,6 +83,25 @@ export default function Chat() {
                   return newMessages;
                 });
               }
+              if (data.error) {
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  newMessages[newMessages.length - 1].content = "⚠️ Error: " + data.error;
+                  return newMessages;
+                });
+              }
+              if (data.message && !data.text) {
+                // Status update (e.g. "Sending resume...")
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  // Append status in italics if it's not the main text
+                  const currentContent = newMessages[newMessages.length - 1].content;
+                  if (!currentContent.includes(data.message)) {
+                    newMessages[newMessages.length - 1].content = currentContent + `\n\n*${data.message}*`;
+                  }
+                  return newMessages;
+                });
+              }
             } catch (e) {
               // console.warn('Failed to parse stream chunk JSON', e);
             }
