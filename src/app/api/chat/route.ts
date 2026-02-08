@@ -8,6 +8,7 @@ import fs from 'fs';
 // Vercel Route Config
 export const maxDuration = 60; // 5 minutes (max for hobby is 10s-60s depending on plan)
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // Explicitly use Node.js runtime
 
 // Initialize OpenAI client
 // Note: In Vercel, if API Key is missing, this might not throw immediately but will fail on first call.
@@ -104,6 +105,9 @@ export async function POST(request: Request) {
                 const sendEvent = (event: string, data: any) => {
                     controller.enqueue(new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
                 };
+
+                // Send heartbeat to confirm connection
+                sendEvent('ping', { message: 'connected' });
 
                 // Send thread ID immediately
                 sendEvent('threadId', { threadId: threadIdToUse });
