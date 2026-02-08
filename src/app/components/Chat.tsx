@@ -49,61 +49,76 @@ export default function Chat() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantMessageContent = "";
+      let buffer = ""; // Buffer for fragmented chunks
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
 
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            // Event type handling if needed (e.g. 'textDelta', 'threadId')
-          } else if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
+        // SSE messages are separated by double newline
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || ""; // Keep the incomplete part in the buffer
 
-              if (data.threadId) {
-                setThreadId(data.threadId);
+        for (const part of parts) {
+          const lines = part.split('\n');
+          let data: any = null;
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                data = JSON.parse(line.slice(6));
+              } catch (e) {
+                console.error('Failed to parse JSON:', line);
               }
-              if (data.text) {
-                assistantMessageContent += data.text;
-                // Update the last message (which is the assistant placeholder)
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  newMessages[newMessages.length - 1].content = assistantMessageContent;
-                  return newMessages;
-                });
-              }
-              if (data.action === 'book_meeting') {
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  newMessages[newMessages.length - 1].widget = 'calendly';
-                  return newMessages;
-                });
-              }
-              if (data.error) {
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  newMessages[newMessages.length - 1].content = "⚠️ Error: " + data.error;
-                  return newMessages;
-                });
-              }
-              if (data.message && !data.text) {
-                // Status update (e.g. "Sending resume...")
-                setMessages(prev => {
-                  const newMessages = [...prev];
-                  // Append status in italics if it's not the main text
-                  const currentContent = newMessages[newMessages.length - 1].content;
-                  if (!currentContent.includes(data.message)) {
-                    newMessages[newMessages.length - 1].content = currentContent + `\n\n*${data.message}*`;
+            }
+          }
+
+          if (data) {
+            if (data.threadId) {
+              setThreadId(data.threadId);
+            }
+            // Handle different types of events
+            if (data.text) {
+              assistantMessageContent += data.text;
+              setMessages(prev => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1].content = assistantMessageContent;
+                return newMessages;
+              });
+            }
+            else if (data.message && !data.text) {
+              // Status update
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMsg = newMessages[newMessages.length - 1];
+                if (!lastMsg.content.includes(data.message)) {
+                  // Only add status if content is empty or explicitly separate
+                  if (lastMsg.content === "") {
+                    lastMsg.content = `*${data.message}*`;
+                  } else {
+                    // Don't append status to text to keep it clean, or use a separate UI element
+                    // For now, minimal intrusion
                   }
-                  return newMessages;
-                });
-              }
-            } catch (e) {
-              // console.warn('Failed to parse stream chunk JSON', e);
+                }
+                return newMessages;
+              });
+            }
+            else if (data.error) {
+              setMessages(prev => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1].content += `\n⚠️ ${data.error}`;
+                return newMessages;
+              });
+            }
+            else if (data.action === 'book_meeting') {
+              setMessages(prev => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1].widget = 'calendly';
+                return newMessages;
+              });
             }
           }
         }
