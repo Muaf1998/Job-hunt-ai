@@ -8,6 +8,8 @@ import { promisify } from 'util';
 
 const pump = promisify(pipeline);
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
