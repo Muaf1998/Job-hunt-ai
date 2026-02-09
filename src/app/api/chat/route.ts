@@ -1,22 +1,11 @@
 
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import nodemailer from 'nodemailer';
-import path from 'path';
-import fs from 'fs';
+import { openai, ASSISTANT_ID } from '@/lib/openai';
 
 // Vercel Route Config
 export const maxDuration = 60; // 5 minutes (max for hobby is 10s-60s depending on plan)
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // Explicitly use Node.js runtime
-
-// Initialize OpenAI client
-// Note: In Vercel, if API Key is missing, this might not throw immediately but will fail on first call.
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-
-const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
 
 // Email Transporter
 const transporter = nodemailer.createTransport({
