@@ -1,6 +1,9 @@
 
 import { NextResponse } from 'next/server';
 import { openai, ASSISTANT_ID } from '@/lib/openai';
+import nodemailer from 'nodemailer';
+import path from 'path';
+import fs from 'fs';
 
 // Vercel Route Config
 export const maxDuration = 60; // 5 minutes (max for hobby is 10s-60s depending on plan)
