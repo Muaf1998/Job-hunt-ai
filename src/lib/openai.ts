@@ -1,11 +1,14 @@
 import OpenAI from 'openai';
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('Missing OPENAI_API_KEY environment variable');
+// Allow build to pass without key, but fail at runtime if missing
+const apiKey = process.env.OPENAI_API_KEY || '';
+
+if (!apiKey && process.env.NODE_ENV !== 'production') {
+  console.warn('Missing OPENAI_API_KEY environment variable');
 }
 
 export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: apiKey,
 });
 
 export const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
