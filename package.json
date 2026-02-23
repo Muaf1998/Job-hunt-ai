@@ -16,6 +16,7 @@
     "next": "16.1.6",
     "nodemailer": "^8.0.1",
     "openai": "^4.52.0",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "sharp": "^0.34.5",
