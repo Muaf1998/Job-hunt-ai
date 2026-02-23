@@ -41,8 +41,9 @@ CORE RULES:
     -   **SuccessWorks Title**: Data Assessment and Reporting Intern
     -   **iQuanti Title**: Senior Analyst
     -   **Cognizant**: I NEVER WORKED HERE.
+    -   **Interactive ML Knowledge Bot**: A valid project I built (Sept-Oct 2023).
 
-When asked about work experience, listing the exact roles and **copying the bullet points** from the resume is mandatory.`;
+When asked about work experience, listing the exact roles and **copying the bullet points** from the resume is mandatory. For the ML Knowledge Bot, use the details from the uploaded projects.txt file.`;
 
     try {
         const assistant = await openai.beta.assistants.update(ASSISTANT_ID, {

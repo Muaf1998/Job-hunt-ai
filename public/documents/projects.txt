@@ -1,0 +1,6 @@
+Interactive ML Knowledge Bot (September 2023 – October 2023)
+- Designed a Q&A chatbot for addressing Machine Learning queries sourced from ML Blogs.
+- Utilized tools like advertools, beautiful soup, langchain, cloudscraper, and OpenAI API.
+- Showcased on Streamlit.
+- Achieved precise semantic search using Pinecone index.
+- This technique paves the way for developing specialized knowledge centers or chatbots for diverse topics.

@@ -59,8 +59,10 @@ export default function Chat() {
             const decoder = new TextDecoder();
             let assistantMessageAccumulated = '';
 
-            // Optimistically add an empty assistant message to stream into
+            // Create a unique ID for the assistant message we're about to stream
             const assistantMsgId = (Date.now() + 1).toString();
+
+            // Optimistically add an empty assistant message
             setMessages((prev) => [
                 ...prev,
                 { id: assistantMsgId, role: 'assistant', content: '' },
@@ -71,19 +73,48 @@ export default function Chat() {
                 if (done) break;
 
                 const chunk = decoder.decode(value);
-                const lines = chunk.split('\n\n');
+                const lines = chunk.split('\n'); // Split by newline to get individual lines
 
                 for (const line of lines) {
                     if (line.startsWith('event: threadId')) {
-                        const data = line.replace('event: threadId\ndata: ', '').trim();
-                        setThreadId(data);
-                    } else if (line.startsWith('event: text')) {
-                        const data = line.replace('event: text\ndata: ', '').trim();
-                        try {
-                            // The data is a JSON string of the text chunk
-                            const textChunk = JSON.parse(data);
-                            assistantMessageAccumulated += textChunk;
+                        // Extract JSON data
+                        const jsonStr = line.substring('event: threadId'.length).trim();
+                        // Sometimes the data comes on the next line or same line depending on formatting.
+                        // But per the backend:
+                        // sendEvent('threadId', { threadId: threadIdToUse });
+                        // It sends: event: threadId\ndata: {"threadId":"..."}\n\n
+                        // So we need to be careful. The split above might separate event and data.
+                        // Let's use a robust buffer approach or just handle the `data:` lines.
+                    }
+                }
 
+                // Better approach for SSE parsing:
+                // Accumulate buffer and split by double newline
+                const events = chunk.split('\n\n');
+                for (const eventStr of events) {
+                    if (!eventStr.trim()) continue;
+
+                    let eventName = '';
+                    let eventData: any = null;
+
+                    const eventLines = eventStr.split('\n');
+                    for (const line of eventLines) {
+                        if (line.startsWith('event: ')) {
+                            eventName = line.substring('event: '.length).trim();
+                        } else if (line.startsWith('data: ')) {
+                            try {
+                                eventData = JSON.parse(line.substring('data: '.length).trim());
+                            } catch (e) {
+                                console.error('Error parsing JSON data', e);
+                            }
+                        }
+                    }
+
+                    if (eventName && eventData) {
+                        if (eventName === 'threadId') {
+                            setThreadId(eventData.threadId);
+                        } else if (eventName === 'textDelta') {
+                            assistantMessageAccumulated += eventData.text;
                             setMessages((prev) =>
                                 prev.map((msg) =>
                                     msg.id === assistantMsgId
@@ -91,15 +122,38 @@ export default function Chat() {
                                         : msg
                                 )
                             );
-                        } catch (jsonError) {
-                            console.error("Error parsing JSON chunk", jsonError);
+                        } else if (eventName === 'status') {
+                            // Show status update as a temporary italicized line in the assistant message or a separate toast
+                            // For now, let's append it as italics
+                            setMessages((prev) =>
+                                prev.map((msg) =>
+                                    msg.id === assistantMsgId
+                                        ? { ...msg, content: assistantMessageAccumulated + `\n\n*${eventData.message}*` }
+                                        : msg
+                                )
+                            );
+                        } else if (eventName === 'error') {
+                            console.error("Server error:", eventData.message);
+                            setMessages((prev) =>
+                                prev.map((msg) =>
+                                    msg.id === assistantMsgId
+                                        ? { ...msg, content: assistantMessageAccumulated + `\n\n**Error:** ${eventData.message}` }
+                                        : msg
+                                )
+                            );
+                        } else if (eventName === 'action') {
+                            // Handle specific actions if needed
+                            // book_meeting is handled by status currently
                         }
                     }
                 }
             }
         } catch (error) {
             console.error('Error fetching chat response:', error);
-            // Ideally show an error toast here
+            setMessages((prev) => [
+                ...prev,
+                { id: Date.now().toString(), role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }
+            ]);
         } finally {
             setIsLoading(false);
         }

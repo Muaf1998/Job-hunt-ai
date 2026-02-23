@@ -21,7 +21,7 @@ const transporter = nodemailer.createTransport({
 
 async function sendResumeEmail(toEmail: string) {
     try {
-        const resumePath = path.resolve(process.cwd(), 'documents', 'Aflah,Muhammed_AI.pdf');
+        const resumePath = path.resolve(process.cwd(), 'public', 'documents', 'Aflah_Muhammed.pdf');
 
         if (!fs.existsSync(resumePath)) {
             console.error('❌ Resume file not found at:', resumePath);
