@@ -21,7 +21,14 @@ const transporter = nodemailer.createTransport({
 
 async function sendResumeEmail(toEmail: string) {
     try {
-        const resumePath = path.resolve(process.cwd(), 'public', 'documents', 'Aflah_Muhammed.pdf');
+        // In Next.js standalone mode, the current working directory might be inside .next/standalone
+        // We ensure we resolve relative to the process root where public is copied.
+        let resumePath = path.join(process.cwd(), 'public', 'documents', 'Aflah_Muhammed.pdf');
+
+        if (!fs.existsSync(resumePath)) {
+            // Fallback for standalone server execution context
+            resumePath = path.join(process.cwd(), '.next', 'standalone', 'public', 'documents', 'Aflah_Muhammed.pdf');
+        }
 
         if (!fs.existsSync(resumePath)) {
             console.error('❌ Resume file not found at:', resumePath);
