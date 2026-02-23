@@ -12,7 +12,7 @@ const openai = new OpenAI({
 });
 
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
-const DOCS_DIR = path.resolve(process.cwd(), 'documents');
+const DOCS_DIR = path.resolve(process.cwd(), 'public/documents');
 
 async function uploadDocuments() {
     if (!process.env.OPENAI_API_KEY || !ASSISTANT_ID) {
@@ -26,7 +26,7 @@ async function uploadDocuments() {
         process.exit(1);
     }
 
-    const files = fs.readdirSync(DOCS_DIR).filter(file => 
+    const files = fs.readdirSync(DOCS_DIR).filter(file =>
         ['.pdf', '.txt', '.docx', '.md'].includes(path.extname(file).toLowerCase())
     );
 
