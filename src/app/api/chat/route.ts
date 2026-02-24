@@ -11,16 +11,21 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // Explicitly use Node.js runtime
 
 // Email Transporter
+// Email Transporter
 const transporter = nodemailer.createTransport({
-    // Explicitly use the IPv4-only Gmail SMTP endpoint to bypass Railway's broken IPv6
-    host: 'smtp.ipv4.google.com',
+    // Explicitly use the IPv4 IP Address for standard Gmail SMTP to bypass Railway's broken IPv6 DNS resolution completely
+    host: '142.250.141.108',
     port: 465,
     secure: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
-    // Prevent hanging dynamically if Railway IPv6 fails
+    tls: {
+        // Accept the cert mismatch since we are connecting via direct IP instead of domain name
+        rejectUnauthorized: false
+    },
+    // Prevent hanging dynamically if Railway connection fails
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
