@@ -142,7 +142,7 @@ export async function POST(request: Request) {
                                             tool_call_id: toolCall.id,
                                             output: JSON.stringify({ success: false, error: emailResult.error })
                                         });
-                                        sendEvent('error', { message: `Failed to send email.` });
+                                        sendEvent('error', { error: `Failed to send email: ${emailResult.error}` });
                                     }
                                 }
                             }
@@ -165,7 +165,7 @@ export async function POST(request: Request) {
                                     controller.close();
                                 }
                                 if (event.event === 'thread.run.failed') {
-                                    sendEvent('error', { message: "Run failed during tool output submission" });
+                                    sendEvent('error', { error: "Run failed during tool output submission" });
                                     controller.close();
                                 }
                             }
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
 
                     } catch (error) {
                         console.error("Error submitting tool outputs:", error);
-                        sendEvent('error', { message: "Error processing tools" });
+                        sendEvent('error', { error: "Error processing tools" });
                         controller.close();
                     }
                 }
@@ -202,13 +202,13 @@ export async function POST(request: Request) {
                         if (event.event === 'thread.run.failed') {
                             // Enhanced error details
                             console.error("❌ Run failed event received:", JSON.stringify(event.data));
-                            sendEvent('error', { message: "AI Run Failed. Check server logs." });
+                            sendEvent('error', { error: "AI Run Failed. Check server logs." });
                             controller.close();
                         }
                     }
                 } catch (e: any) {
                     console.error("❌ Error during stream loop:", e);
-                    sendEvent('error', { message: `Stream connection error: ${e.message}` });
+                    sendEvent('error', { error: `Stream connection error: ${e.message}` });
                     controller.close();
                 }
             }
