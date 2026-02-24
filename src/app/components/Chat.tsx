@@ -107,9 +107,10 @@ export default function Chat() {
               });
             }
             else if (data.error) {
+              assistantMessageContent += `\n\n⚠️ ${data.error}\n\n`;
               setMessages(prev => {
                 const newMessages = [...prev];
-                newMessages[newMessages.length - 1].content += `\n⚠️ ${data.error}`;
+                newMessages[newMessages.length - 1].content = assistantMessageContent;
                 return newMessages;
               });
             }

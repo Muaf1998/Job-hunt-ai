@@ -10,14 +10,6 @@ export const maxDuration = 60; // 5 minutes (max for hobby is 10s-60s depending 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // Explicitly use Node.js runtime
 
-// Email Transporter
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
 
 async function sendResumeEmail(toEmail: string) {
     try {
@@ -52,9 +44,9 @@ async function sendResumeEmail(toEmail: string) {
         console.log('📧 Email sent:', info.messageId);
         return { success: true };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Error sending email:', error);
-        return { success: false, error: "Failed to send email." };
+        return { success: false, error: `Failed to send email: ${error.message || String(error)}` };
     }
 }
 
