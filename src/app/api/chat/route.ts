@@ -10,6 +10,14 @@ export const maxDuration = 60; // 5 minutes (max for hobby is 10s-60s depending 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // Explicitly use Node.js runtime
 
+// Email Transporter
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
 
 async function sendResumeEmail(toEmail: string) {
     try {
