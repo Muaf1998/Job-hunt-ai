@@ -1,74 +1,13 @@
 
 import { NextResponse } from 'next/server';
 import { openai, ASSISTANT_ID } from '@/lib/openai';
-import nodemailer from 'nodemailer';
-import path from 'path';
-import fs from 'fs';
 
 // Vercel Route Config
 export const maxDuration = 60; // 5 minutes (max for hobby is 10s-60s depending on plan)
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // Explicitly use Node.js runtime
 
-// Email Transporter
-// Email Transporter
-// Email Transporter
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
 
-async function sendResumeEmail(toEmail: string) {
-    try {
-        // In Next.js standalone mode, the current working directory might be inside .next/standalone
-        // We ensure we resolve relative to the process root where public is copied.
-        let resumePath = path.join(process.cwd(), 'public', 'documents', 'Aflah_Muhammed.pdf');
-
-        if (!fs.existsSync(resumePath)) {
-            // Fallback for standalone server execution context
-            resumePath = path.join(process.cwd(), '.next', 'standalone', 'public', 'documents', 'Aflah_Muhammed.pdf');
-        }
-
-        if (!fs.existsSync(resumePath)) {
-            console.error('❌ Resume file not found at:', resumePath);
-            return { success: false, error: "Resume file not found on server." };
-        }
-
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: toEmail,
-            subject: "Resume of Muhammed Aflah",
-            text: `Hello,\n\nPlease find attached the resume of Muhammed Aflah as requested.\n\nBest regards,\nMosaic (AI Assistant)`,
-            attachments: [
-                {
-                    filename: 'Muhammed_Aflah_Resume.pdf',
-                    path: resumePath
-                }
-            ]
-        };
-
-        const info = await transporter.sendMail(mailOptions);
-        console.log('📧 Email sent:', info.messageId);
-        return { success: true };
-
-    } catch (error: any) {
-        console.error('❌ Error sending email:', error);
-        return { success: false, error: `Failed to send email: ${error.message || String(error)}` };
-    }
-}
-
-export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get('email');
-    if (!email) return NextResponse.json({ error: "Missing ?email= param" }, { status: 400 });
-
-    console.log("Testing direct email send to:", email);
-    const result = await sendResumeEmail(email);
-    return NextResponse.json(result);
-}
 
 export async function POST(request: Request) {
     try {
@@ -137,26 +76,7 @@ export async function POST(request: Request) {
                                         output: JSON.stringify({ success: true, status: "widget_displayed" })
                                     });
                                 }
-                                else if (toolCall.function.name === 'email_resume') {
-                                    const args = JSON.parse(toolCall.function.arguments);
-                                    sendEvent('status', { message: `Sending resume to ${args.email}...` });
 
-                                    const emailResult = await sendResumeEmail(args.email);
-
-                                    if (emailResult.success) {
-                                        toolOutputs.push({
-                                            tool_call_id: toolCall.id,
-                                            output: JSON.stringify({ success: true, message: `Resume sent to ${args.email}` })
-                                        });
-                                        sendEvent('status', { message: `Resume sent!` });
-                                    } else {
-                                        toolOutputs.push({
-                                            tool_call_id: toolCall.id,
-                                            output: JSON.stringify({ success: false, error: emailResult.error })
-                                        });
-                                        sendEvent('error', { error: `Failed to send email: ${emailResult.error}` });
-                                    }
-                                }
                             }
                         }
 
