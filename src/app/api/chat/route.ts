@@ -12,7 +12,8 @@ export const runtime = 'nodejs'; // Explicitly use Node.js runtime
 
 // Email Transporter
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
+    // Explicitly use the IPv4-only Gmail SMTP endpoint to bypass Railway's broken IPv6
+    host: 'smtp.ipv4.google.com',
     port: 465,
     secure: true,
     auth: {
