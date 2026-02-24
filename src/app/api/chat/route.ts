@@ -58,6 +58,16 @@ async function sendResumeEmail(toEmail: string) {
     }
 }
 
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+    if (!email) return NextResponse.json({ error: "Missing ?email= param" }, { status: 400 });
+
+    console.log("Testing direct email send to:", email);
+    const result = await sendResumeEmail(email);
+    return NextResponse.json(result);
+}
+
 export async function POST(request: Request) {
     try {
         // 1. Validate Environment Variables
