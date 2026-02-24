@@ -12,23 +12,13 @@ export const runtime = 'nodejs'; // Explicitly use Node.js runtime
 
 // Email Transporter
 // Email Transporter
+// Email Transporter
 const transporter = nodemailer.createTransport({
-    // Explicitly use the IPv4 IP Address for standard Gmail SMTP to bypass Railway's broken IPv6 DNS resolution completely
-    host: '142.250.141.108',
-    port: 465,
-    secure: true,
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
-    tls: {
-        // Accept the cert mismatch since we are connecting via direct IP instead of domain name
-        rejectUnauthorized: false
-    },
-    // Prevent hanging dynamically if Railway connection fails
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
 });
 
 async function sendResumeEmail(toEmail: string) {
